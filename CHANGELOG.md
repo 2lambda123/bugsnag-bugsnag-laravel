@@ -1,6 +1,13 @@
 Changelog
 =========
 
+## TBD
+
+### Enhancements
+
+* Attach Laravel 11's `Context` to events as metadata under the key 'Laravel Context'. Hidden context will only be added if the new configuration option `attach_hidden_context` is enabled, either in `config/bugsnag.php` or via the environment variable `BUGSNAG_ATTACH_HIDDEN_CONTEXT`
+  [#537](https://github.com/bugsnag/bugsnag-laravel/pull/537)
+
 ## v2.27.0 (2024-03-13)
 
 ### Enhancements

@@ -25,6 +25,11 @@ class DebugBacktraceStub
         self::$backtrace = $backtrace;
     }
 
+    public static function hasValue()
+    {
+        return self::$backtrace !== [];
+    }
+
     public static function clear()
     {
         self::$backtrace = [];

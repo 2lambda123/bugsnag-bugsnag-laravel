@@ -8,7 +8,11 @@ use Bugsnag\BugsnagLaravel\Tests\Stubs\DebugBacktraceStub;
 
 function debug_backtrace()
 {
-    return DebugBacktraceStub::get();
+    if (DebugBacktraceStub::hasValue()) {
+        return DebugBacktraceStub::get();
+    }
+
+    return \debug_backtrace();
 }
 
 namespace Bugsnag\BugsnagLaravel\Tests\Middleware;

@@ -10,11 +10,13 @@ use Bugsnag\BugsnagLaravel\Tests\Stubs\Injectee;
 use Bugsnag\BugsnagLaravel\Tests\Stubs\InjecteeWithLogInterface;
 use Bugsnag\Client;
 use Bugsnag\FeatureFlag;
+use Bugsnag\Report;
 use Bugsnag\PsrLogger\BugsnagLogger;
 use Bugsnag\PsrLogger\MultiLogger as BaseMultiLogger;
 use Illuminate\Contracts\Logging\Log;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\ServiceProvider;
+use Illuminate\Support\Facades\Context;
 
 class ServiceProviderTest extends AbstractTestCase
 {
@@ -530,5 +532,80 @@ class ServiceProviderTest extends AbstractTestCase
 
         $this->assertInstanceOf(Client::class, $client);
         $this->assertSame(73, $client->getMaxBreadcrumbs());
+    }
+
+    public function testItSetsContextAsMetadata()
+    {
+        if (!class_exists(Context::class)) {
+            $this->markTestSkipped("Requires Laravel 11's 'Context' class");
+        }
+
+        Context::add('a', 1234);
+        Context::add('b', true);
+        Context::addHidden('x', ':)');
+
+        /** @var Client $client */
+        $client = $this->app->make(Client::class);
+
+        Context::add('c', 'hello');
+        Context::add('d', [1, 2, 3]);
+
+        $expected = ['a' => 1234, 'b' => true, 'c' => 'hello', 'd' => [1, 2, 3]];
+        $actual = [];
+        $hasHiddenContext = true;
+
+        $client->notifyException(
+            new \Exception('hello'),
+            function (Report $report) use (&$actual, &$hasHiddenContext) {
+                $metadata = $report->getMetadata();
+
+                $actual = $metadata['Laravel Context'];
+                $hasHiddenContext = isset($metadata['Laravel Hidden Context']);
+            }
+        );
+
+        $this->assertSame($expected, $actual);
+        $this->assertFalse($hasHiddenContext);
+    }
+
+    public function testItSetsHiddenContextAsMetadataIfConfiguredToDoSo()
+    {
+        if (!class_exists(Context::class)) {
+            $this->markTestSkipped("Requires Laravel 11's 'Context' class");
+        }
+
+        Context::addHidden('a', 1234);
+        Context::add('b', true);
+
+        /** @var \Illuminate\Config\Repository $laravelConfig */
+        $laravelConfig = $this->app->config;
+        $bugsnagConfig = $laravelConfig->get('bugsnag');
+        $bugsnagConfig['attach_hidden_context'] = true;
+
+        $laravelConfig->set('bugsnag', $bugsnagConfig);
+
+        /** @var Client $client */
+        $client = $this->app->make(Client::class);
+
+        Context::add('c', 'hello');
+        Context::addHidden('d', [1, 2, 3]);
+
+        $expectedContext = ['b' => true, 'c' => 'hello'];
+        $expectedHiddenContext = ['a' => 1234, 'd' => [1, 2, 3]];
+        $actualContext = [];
+        $actualHiddenContext = [];
+
+        $client->notifyException(
+            new \Exception('hello'),
+            function (Report $report) use (&$actualContext, &$actualHiddenContext) {
+                $metadata = $report->getMetadata();
+
+                $actualContext = $metadata['Laravel Context'];
+                $actualHiddenContext = $metadata['Laravel Hidden Context'];
+            }
+        );
+
+        $this->assertSame($expectedContext, $actualContext);
+        $this->assertSame($expectedHiddenContext, $actualHiddenContext);
     }
 }
