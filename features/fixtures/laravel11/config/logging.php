@@ -54,9 +54,13 @@ return [
 
         'stack' => [
             'driver' => 'stack',
-            'channels' => explode(',', env('LOG_STACK', 'single')),
+            'channels' => ['single', 'bugsnag'],
             'ignore_exceptions' => false,
         ],
+
+         'bugsnag' => [
+             'driver' => 'bugsnag',
+         ],
 
         'single' => [
             'driver' => 'single',
